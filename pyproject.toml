@@ -1,0 +1,25 @@
+[project]
+name = "scramjet-mdo"
+version = "0.1.0"
+description = "Scramjet waverider vehicle analysis: single-point (SNOPT) and co-design (CasADi trajectory) optimization."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "hypervehicle",
+    "hypysagas",
+    "hypervisc",
+    "HyperPro",
+    "numpy",
+    "scipy",
+    "pandas",
+    "matplotlib",
+    "pyoptsparse",
+]
+
+# One checkout of each shared library on disk, referenced by path, editable.
+# No vendored/rsync'd copies here by design (see README).
+[tool.uv.sources]
+hypervehicle = { path = "/home/s4679920/HyperMDAO/hyperVehicle", editable = true }
+hypysagas = { path = "/home/s4679920/HyperMDAO/pysagas-dev", editable = true }
+hypervisc = { path = "/home/s4679920/HyperMDAO/HyperVisc", editable = true }
+HyperPro = { path = "/home/s4679920/HyperMDAO/HyperPro", editable = true }
