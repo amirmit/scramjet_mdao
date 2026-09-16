@@ -1,5 +1,5 @@
 [project]
-name = "scramjet-mdo"
+name = "scramjet_mdao"
 version = "0.1.0"
 description = "Scramjet waverider vehicle analysis: single-point (SNOPT) and co-design (CasADi trajectory) optimization."
 readme = "README.md"

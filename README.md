@@ -1,4 +1,4 @@
-# scramjet-mdo
+# scramjet_mdao
 
 Top-level run repo for the scramjet waverider vehicle analysis tool.
 
