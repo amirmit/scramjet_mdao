@@ -18,6 +18,16 @@ dependencies = [
 
 # One checkout of each shared library on disk, referenced by path, editable.
 # No vendored/rsync'd copies here by design (see README).
+#
+# NOTE: these are the OLD stack (pysagas/old-hypervehicle/hypervisc/old-HyperPro),
+# not MDAO's current hypervehicle2/hyperpanel/hypergrad/hyperProp, because
+# vehicle/Eng_Build.py's own import statements still target the old API
+# (`hypervehicle.generator.Generator`, `pysagas.flow.FlowState`, etc). Pointing
+# this table at hyperpanel/hypervehicle2 instead would NOT make the code run --
+# those packages don't have the same module paths/classes, so the imports would
+# just fail differently. Porting vehicle/Eng_Build.py (and Run_ObjFunc.py's
+# panel/friction-drag calls) onto the MDAO stack is real code work, not a
+# dependency-table edit; see README "Reconciling with MDAO's current stack".
 [tool.uv.sources]
 hypervehicle = { path = "/home/s4679920/HyperMDAO/hyperVehicle", editable = true }
 hypysagas = { path = "/home/s4679920/HyperMDAO/pysagas-dev", editable = true }

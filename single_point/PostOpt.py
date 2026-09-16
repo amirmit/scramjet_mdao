@@ -551,7 +551,6 @@ def SaveHistory(filename, sens_log=None, run_details=None, case_config_path=None
         "SNOPT_dump.out",
         filename,
         "Opt_Main.py",
-        "Eng_Build.py",
         "Run_ObjFunc.py",
         "Run_SensFunc.py",
     ]
@@ -559,6 +558,12 @@ def SaveHistory(filename, sens_log=None, run_details=None, case_config_path=None
         src = base_path.parent / fname
         if src.exists():
             shutil.copy2(src, run_dir / fname)
+
+    # Eng_Build.py now lives in the shared vehicle/ folder, not alongside
+    # the driver -- copy it separately so run provenance still captures it.
+    eng_build_src = base_path.parent.parent / "vehicle" / "Eng_Build.py"
+    if eng_build_src.exists():
+        shutil.copy2(eng_build_src, run_dir / "Eng_Build.py")
 
     # 3b. Copy the case config too, under its own basename (its filename
     # varies per case, unlike the fixed names above, so it isn't part of

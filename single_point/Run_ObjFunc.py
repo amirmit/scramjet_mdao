@@ -1,8 +1,13 @@
 import importlib
 import os
 import sys
+from pathlib import Path
 import numpy as np
 from scipy.constants import g
+
+# Eng_Build.py lives in the sibling vehicle/ folder, shared with co_design/
+# (see README "Shared vehicle definition") rather than copied per-driver.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "vehicle"))
 
 import HyperPro.nozzle_surrogate
 from Eng_Build import Parametric_EngModel
