@@ -130,8 +130,8 @@ def plot_outflow(flowstate, m_dot, iteration, state_C=None, state_I=None, con_li
     _iters.append(iteration)
     _md_vals.append(m_dot)
 
-    _P_vals["E"].append(flowstate.P / 1000)
-    _M_vals["E"].append(flowstate.M)
+    _P_vals["E"].append(flowstate.p / 1000)
+    _M_vals["E"].append(flowstate.mach)
     _T_vals["E"].append(flowstate.T)
 
     for s, state in (("C", state_C), ("I", state_I)):

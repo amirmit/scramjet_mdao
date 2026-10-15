@@ -31,5 +31,5 @@ dependencies = [
 [tool.uv.sources]
 hypervehicle = { path = "/home/s4679920/HyperMDAO/hyperVehicle", editable = true }
 hypysagas = { path = "/home/s4679920/HyperMDAO/pysagas-dev", editable = true }
-hypervisc = { path = "/home/s4679920/HyperMDAO/HyperVisc", editable = true }
+hypervisc = { path = "/home/s4679920/HyperMDAO/hypervisc", editable = true }
 HyperPro = { path = "/home/s4679920/HyperMDAO/HyperPro", editable = true }

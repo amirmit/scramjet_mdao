@@ -1,58 +1,45 @@
-"""Loads and validates a case config: a plain .py file under cases/ that
-Opt_Main.py takes as its sole CLI argument (python Opt_Main.py cases/x.py).
+"""Loads and validates a case config: a plain .py file that Opt_Main.py takes
+as its sole CLI argument (python Opt_Main.py opt_input.py).
 
-Validation exists because two things downstream are completely permissive
-and were found, during this refactor, to fail silently rather than loudly:
-Eng_Build.Parametric_EngModel's **kwargs path setattrs any key it's given
-(Eng_Build.py:19-65 -> hypervehicle/generator.py:22-26), and dvdp() will
-happily hand a FloatWithSens seed vector to a name that nothing reads
-(hypervehicle/generator.py:28-37) -- a typo'd or non-existent DV name gets
-an all-zero gradient column instead of an error. A config file makes this
-more likely (no IDE autocomplete on dict keys), so it's checked here.
+Validation runs ONCE at startup (Opt_Main calls load_case_config at module
+level), not per optimisation iteration. It exists because the pipeline is
+completely permissive about names and fails silently rather than loudly:
+Parametric_Scramjet2D sets any key it is given as an attribute, and a
+typo'd or non-existent DV name just gets an all-zero gradient column instead
+of an error. A config file makes this more likely (no IDE autocomplete on
+dict keys), so it's checked here.
+
+SHARED WITH co_design: the valid geometry DV names come from
+co_design/geometry_generation.py's SJ2D_GEOM_PARAM_NAMES (single source of
+truth) -- changing that set changes what a single-point case may name.
 """
 
 import importlib.util
 import os
+import sys
 from pathlib import Path
 
-import HyperPro.nozzle_surrogate
-
+import hyperProp.Nozzle.models as _nozzle_models
 from hypervisc.registry import _MODEL_CLASSES as _CF_MODEL_CLASSES
 
+# geometry_generation.py lives in the sibling co_design/ folder (shared code,
+# see the docstring above).
+_CO_DESIGN = str(Path(__file__).resolve().parents[1] / "co_design")
+if _CO_DESIGN not in sys.path:
+    sys.path.insert(0, _CO_DESIGN)
+
+from geometry_generation import SJ2D_GEOM_PARAM_NAMES
 from problem_catalog import CATALOG
 
-# Resolved the same way Run_ObjFunc.get_surrogate() resolves it, but via a
-# lightweight import (just HyperPro.nozzle_surrogate, not the full
-# Eng_Build/hypervehicle/pysagas stack) so validating a config stays cheap.
-_SURROGATE_ROOT = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(HyperPro.nozzle_surrogate.__file__))),
-    "SurrogateGen",
-    "nozzle_v3",
-)
+# The 13 geometry DVs plus equivalence_ratio (an engine-side DV, promoted to
+# FWS together with the geometry ones in single-point -- in co-design it is a
+# trajectory control instead). bez_start_ratio is a geometry default that is
+# never a DV.
+VALID_DV_NAMES = (SJ2D_GEOM_PARAM_NAMES - {"bez_start_ratio"}) | {"equivalence_ratio"}
 
-# The exact parameter names Eng_Build.Parametric_EngModel actually reads
-# (create_vehicle_geom / create_inlet / create_cowl / create_engine /
-# create_nozzle -- see the refactor plan's exploration notes). Kept as an
-# explicit list rather than introspected, since introspecting **kwargs
-# consumption from setattr calls isn't reliable.
-VALID_DV_NAMES = frozenset(
-    {
-        "inlet_length_1",
-        "inlet_length_2",
-        "inlet_theta_1",
-        "inlet_theta_2",
-        "throat_height",
-        "engine_tilt_ang",
-        "cowl_LE",
-        "engine_length",
-        "isolator_length",
-        "engine_h5_h3",
-        "nozzle_length",
-        "nozzle_angle",
-        "nozzle_mid_frac",
-        "equivalence_ratio",
-    }
-)
+# Every named scalar Run_ObjFunc.calc_vehicle returns -- the names an
+# objective/constraint may use (single source: problem_catalog.CATALOG).
+VALID_QUANTITY_NAMES = frozenset(CATALOG)
 
 
 class CaseConfigError(ValueError):
@@ -82,6 +69,10 @@ def _validate(cfg, path):
     if not getattr(cfg, "case_name", None):
         errors.append("case_name is required and must be non-empty.")
 
+    output_dir = getattr(cfg, "output_dir", None)
+    if output_dir is not None and (not isinstance(output_dir, (str, os.PathLike)) or not str(output_dir).strip()):
+        errors.append("output_dir, if set, must be a non-empty path string (relative paths are relative to the launch directory).")
+
     DV = getattr(cfg, "DV", None)
     if not DV:
         errors.append("DV is required and must define at least one design variable.")
@@ -89,7 +80,7 @@ def _validate(cfg, path):
         for name, spec_ in DV.items():
             if name not in VALID_DV_NAMES:
                 errors.append(
-                    f"DV '{name}' is not a recognised Eng_Build parameter. "
+                    f"DV '{name}' is not a recognised SJ2D design variable. "
                     f"Valid names: {sorted(VALID_DV_NAMES)}"
                 )
                 continue
@@ -110,10 +101,10 @@ def _validate(cfg, path):
 
     constraints = getattr(cfg, "constraints", None) or {}
     for name, spec_ in constraints.items():
-        if name not in CATALOG:
+        if name not in VALID_QUANTITY_NAMES:
             errors.append(
-                f"constraint '{name}' is not in problem_catalog.CATALOG. "
-                f"Valid names: {sorted(CATALOG)}"
+                f"constraint '{name}' is not a Run_ObjFunc quantity. "
+                f"Valid names: {sorted(VALID_QUANTITY_NAMES)}"
             )
             continue
         glb, gub = spec_.get("glb"), spec_.get("gub")
@@ -129,10 +120,10 @@ def _validate(cfg, path):
         errors.append("objective is required and must define at least one term.")
     else:
         for name, spec_ in objective.items():
-            if name not in CATALOG:
+            if name not in VALID_QUANTITY_NAMES:
                 errors.append(
-                    f"objective term '{name}' is not in problem_catalog.CATALOG. "
-                    f"Valid names: {sorted(CATALOG)}"
+                    f"objective term '{name}' is not a Run_ObjFunc quantity. "
+                    f"Valid names: {sorted(VALID_QUANTITY_NAMES)}"
                 )
                 continue
             if spec_.get("scale", 1.0) == 0:
@@ -145,17 +136,15 @@ def _validate(cfg, path):
 
     version = getattr(cfg, "nozzle_surrogate", None)
     if not version:
-        errors.append("nozzle_surrogate is required (e.g. \"v3_1\" or \"v3_2\").")
+        errors.append("nozzle_surrogate is required (e.g. \"v_3_1\" or \"v_3_2\").")
     else:
-        version_dir = os.path.join(_SURROGATE_ROOT, version)
-        cfg_path = os.path.join(version_dir, "config.py")
-        pkl_path = os.path.join(version_dir, "nozzle_v3_surrogate.pkl")
-        if not os.path.isfile(cfg_path):
-            errors.append(f"nozzle_surrogate '{version}': no config.py at {cfg_path}")
-        if not os.path.isfile(pkl_path):
-            errors.append(
-                f"nozzle_surrogate '{version}': no nozzle_v3_surrogate.pkl at {pkl_path}"
-            )
+        models_dir = Path(next(iter(_nozzle_models.__path__)))
+        cfg_path = models_dir / f"config_{version}.py"
+        pkl_path = models_dir / f"{version}.pkl"
+        if not cfg_path.is_file():
+            errors.append(f"nozzle_surrogate '{version}': no config at {cfg_path}")
+        if not pkl_path.is_file():
+            errors.append(f"nozzle_surrogate '{version}': no model pickle at {pkl_path}")
 
     opt_params = getattr(cfg, "opt_params", None)
     if not opt_params:
@@ -170,6 +159,13 @@ def _validate(cfg, path):
         for flag_name in ("engine_visc_flg", "aero_visc_flg"):
             if flag_name in opt_params and not isinstance(opt_params[flag_name], bool):
                 errors.append(f"opt_params['{flag_name}'] must be True or False.")
+        if "package_logs" in opt_params and not isinstance(opt_params["package_logs"], bool):
+            errors.append("opt_params['package_logs'] must be True or False.")
+        if "save_geometry" in opt_params and not isinstance(opt_params["save_geometry"], bool):
+            errors.append("opt_params['save_geometry'] must be True or False.")
+        mesh_params = opt_params.get("mesh_params")
+        if mesh_params is not None and not isinstance(mesh_params, dict):
+            errors.append("opt_params['mesh_params'] must be a dict or None.")
 
     if not getattr(cfg, "snopt_options", None):
         errors.append("snopt_options is required.")

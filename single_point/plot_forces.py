@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from hypervehicle.geometry import Vector3
+from utilities import Vector3
 
 _force_hist = {}  # name -> dict with 'X' or 'Z'
 _iter_hist = []

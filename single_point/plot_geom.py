@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import numpy as np
-from hypervehicle.geometry import Bezier
+from hypervehicle.geom.path import Bezier
 
 
 def plot_geom(geom, iteration_count, inlet=None, post_process=False):

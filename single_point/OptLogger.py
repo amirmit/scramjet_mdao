@@ -35,54 +35,60 @@ class OptLogger:
             self.Objective["x"][key].append(val)
 
         self.Objective["Obj"].append(funcs[self.objective_name])
-        self.Objective["inlet_model"].append(funcs["out4sens"]["inlet_model"])
-        self.Objective["geom"].append(funcs["out4sens"]["geom"])
 
-        out4mat = funcs["out4sens"]["out4mat"]
+        o = funcs["out4sens"]
+        # pyoptsparse's np.real() turns the out4sens dict into a 0-d array.
+        if isinstance(o, np.ndarray):
+            o = o[()]
+        q = o["quantities"]
+
+        self.Objective["inlet_model"].append(o["inlet_model"])
+        self.Objective["geom"].append(o["geom"])
+
+        out4mat = o["out4mat"]
         self.Objective["pressure_recovery"].append(
             {station: out4mat[station]["pressure_recovery"] for station in out4mat}
         )
-        self.Objective["nozzle_diag"].append(funcs["out4sens"]["nozzle_diag"])
-        self.Objective["comp_force"].append(funcs["out4sens"]["comp_force"])
+        self.Objective["nozzle_diag"].append(o["nozzle_diag"])
+        self.Objective["comp_force"].append(o["comp_force"])
 
-        engine_model = funcs["out4sens"]["engine_model"]
         self.Objective["engine_perf"].append(
             {
                 "m_dot_air": out4mat["I"]["m_dot"],
                 "m_dot_fuel": out4mat["E"]["m_dot_f"],
-                "m_dot_f_lim": engine_model.mdf_model["m_dot_f_lim"],
+                "m_dot_f_lim": o["m_dot_f_lim"],
                 "eta_th": out4mat["E"]["eta_th"],
             }
         )
 
         self.Objective["vehicle"].append(
             {
-                "weight": funcs["out4sens"]["weight"],
-                "Sref": funcs["out4sens"]["Sref"],
-                "volume": funcs["out4sens"]["cells"].vol,
-                "internal_vol": funcs["out4sens"]["cat_values"]["internal_vol"],
-                "eng_vol": funcs["out4sens"]["eng_vol"],
+                "weight": o["weight"],
+                "Sref": o["S_ref"],
+                "volume": o["total_vol"],
+                "internal_vol": q["internal_vol"],
+                "eng_vol": o["eng_vol"],
             }
         )
 
-        freestream = funcs["out4sens"]["freestream"]
+        freestream = o["freestream"]
         self.Objective["freestream"].append(
             {
-                "M": freestream.M,
-                "P": freestream.P,
+                "M": freestream.mach,
+                "P": freestream.p,
                 "T": freestream.T,
-                "q": freestream.q,
+                "q": freestream.q_dyn,
             }
         )
 
         self.Objective["out_params"].append(
             {
-                "T_W_ratio": funcs["out4sens"]["cat_values"]["T_W_ratio"],
-                "CD": funcs["out4sens"]["force_coeffs"].x,
+                "T_W_ratio": q["T_W_ratio"],
+                "CD": q["CD"],
             }
         )
 
-        self.Objective["range_mod"].append(funcs["out4sens"]["range_mod"])
+        self.Objective["range_mod"].append(o["range_mod"])
 
     def log_sens(self, xdict, sens):
         """Called from sensFunc to store gradient-side data."""

@@ -1,4 +1,6 @@
+import os
 import sys
+import traceback
 
 import numpy as np
 
@@ -8,14 +10,15 @@ from pathlib import Path
 
 from pyoptsparse import Optimization, OPT
 
-from HyperPro.utilities import get_number
+from utilities import get_number
 from plot_geom import plot_geom
 from plot_converge import plot_converge_dvs
 from plot_converge_obj import plot_converge_obj
 from plot_forces import plot_forces
 from plot_outflow import plot_outflow
-from Run_ObjFunc import Run_ObjFunc, get_surrogate
+from Run_ObjFunc import Run_ObjFunc, get_surrogate, EvaluationFailure
 from Run_SensFunc import Run_SensFunc
+from record import slim_out4sens
 from PostOpt import SaveHistory
 from OptLogger import OptLogger
 from case_config import load_case_config
@@ -40,7 +43,16 @@ def objfunc(xdict, Opt_params={}, con_lim={}):
 
     print(f"xdict={xdict}")
 
-    _, con, out4sens = Run_ObjFunc(xdict, Opt_params)
+    try:
+        _, con, out4sens = Run_ObjFunc(xdict, Opt_params)
+    except EvaluationFailure as e:
+        # Only the expected can't-evaluate-this-design failures land here (a
+        # coding error still crashes). fail=1 makes SNOPT back off to a
+        # shorter step. pyoptsparse still processes `funcs` on a failed call,
+        # so every objective/constraint name must be present (dummy values).
+        print(f"EVALUATION FAILED -> fail=1 returned to SNOPT: {e}")
+        traceback.print_exception(e.__cause__ or e)
+        return {name: 0.0 for name in (*Consts, OBJ_NAME)}, 1
 
     #### Every catalog quantity, scaled by its case-config entry (default
     #### 1.0 for anything not named in objective/constraints) -- computed
@@ -54,7 +66,7 @@ def objfunc(xdict, Opt_params={}, con_lim={}):
 
     print(f"obj={funcs[OBJ_NAME]}")
 
-    funcs["out4sens"] = out4sens
+    funcs["out4sens"] = slim_out4sens(out4sens)  # only what the old repo saved
 
     logger.log_obj(xdict, funcs)
 
@@ -82,7 +94,7 @@ def objfunc(xdict, Opt_params={}, con_lim={}):
             con_lim=con_lim,
         )
 
-        alpha = np.deg2rad(get_number(out4sens["freestream"].aoa))
+        alpha = out4sens["alpha"]
         comp_force = get_number(out4sens["comp_force"])
         plot_forces(
             comp_force,
@@ -150,6 +162,24 @@ if len(sys.argv) == 1:
     print(f"No case config given -- defaulting to {DEFAULT_CASE_CONFIG}")
 
 case = load_case_config(case_config_path)
+
+# Optional `headless = True` in the case config: plots are still created and saved (PostOpt
+# saves every open figure) but no window opens during the run and the final plt.show() is
+# skipped, so the run can go unattended / several at once. Absent or False -> unchanged.
+HEADLESS = bool(getattr(case, "headless", False))
+if HEADLESS:
+    plt.switch_backend("Agg")
+
+# Optional output folder from the case config: everything (SNOPT files, the .hst and the saved
+# run folder output_dir/<case_name>/) is written there. A relative output_dir is relative to
+# the directory the run is launched from. The config path is made absolute first because the
+# process changes into the output folder; without output_dir nothing changes (cwd is used).
+case_config_path = str(Path(case_config_path).resolve())
+if getattr(case, "output_dir", None):
+    _out = Path(case.output_dir).resolve()
+    _out.mkdir(parents=True, exist_ok=True)
+    os.chdir(_out)
+    print(f"Output directory: {_out}")
 
 DV = case.DV
 Consts = case.constraints
@@ -252,7 +282,8 @@ for param, val in Consts.items():
 prob.addObj(OBJ_NAME)
 
 options = dict(case.snopt_options)
-options["snSTOP function handle"] = snstop_callback
+if Opt_params["plot_flg"]:  # the callback only draws the convergence plot
+    options["snSTOP function handle"] = snstop_callback
 print(prob)
 optimizer = OPT(optName="SNOPT", options=options)
 
@@ -293,6 +324,7 @@ SaveHistory(hist_file_name, logger, run_details, case_config_path=case_config_pa
 plt.ioff()
 for fig_num in plt.get_fignums():
     plt.figure(fig_num)
-plt.show()
+if not HEADLESS:
+    plt.show()
 
 

@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import shutil
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
-from HyperPro.RootFind import get_number
+from utilities import get_number
 from OptLogger import OptLogger
 
 
@@ -550,20 +550,28 @@ def SaveHistory(filename, sens_log=None, run_details=None, case_config_path=None
         "SNOPT_summary.out",
         "SNOPT_dump.out",
         filename,
-        "Opt_Main.py",
-        "Run_ObjFunc.py",
-        "Run_SensFunc.py",
     ]
     for fname in files_to_copy:
         src = base_path.parent / fname
         if src.exists():
             shutil.copy2(src, run_dir / fname)
 
-    # Eng_Build.py now lives in the shared vehicle/ folder, not alongside
-    # the driver -- copy it separately so run provenance still captures it.
-    eng_build_src = base_path.parent.parent / "vehicle" / "Eng_Build.py"
-    if eng_build_src.exists():
-        shutil.copy2(eng_build_src, run_dir / "Eng_Build.py")
+    # Run provenance: the code that produced this run -- the single_point
+    # driver/pipeline files plus the shared co_design files it imports.
+    # Located relative to this file, so it doesn't depend on the launch dir.
+    here = Path(__file__).resolve().parent
+    code_files = [
+        here / "Opt_Main.py",
+        here / "Run_ObjFunc.py",
+        here / "Run_SensFunc.py",
+        here.parent / "co_design" / "Scramjet2D.py",
+        here.parent / "co_design" / "geometry_generation.py",
+        here.parent / "co_design" / "scramjet_point.py",
+        here.parent / "co_design" / "quantity_catalog.py",
+    ]
+    for src in code_files:
+        if src.exists():
+            shutil.copy2(src, run_dir / src.name)
 
     # 3b. Copy the case config too, under its own basename (its filename
     # varies per case, unlike the fixed names above, so it isn't part of
