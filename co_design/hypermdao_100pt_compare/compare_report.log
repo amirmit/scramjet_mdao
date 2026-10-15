@@ -1,0 +1,71 @@
+==============================================================================
+100-POINT ENGINE-MODEL COMPARISON: evaluate_scramjet_point (new) vs. Run_ObjFunc.calc_vehicle (HyperMDAO)
+==============================================================================
+Points converged -- new stack: 99/100, old stack: 100/100, compared (both sides ok): 99/100
+------------------------------------------------------------------------------
+VALUES -- per (component, quantity), over all compared points
+------------------------------------------------------------------------------
+component quantity  n  median_abs_pct  max_abs_pct
+     cowl       Fx 99        0.033480 1.359912e-01
+     cowl       Fz 99        0.033480 1.359912e-01
+   engine       Fx 99        5.309422 1.043097e+02
+   engine       Fz 99        5.309422 1.043097e+02
+   engine        M 99        0.000001 1.582139e+01
+   engine        P 99        0.391101 1.646108e+01
+   engine        T 99        0.471670 6.382889e+00
+    inlet       Fx 99        0.000000 1.274636e-13
+    inlet       Fz 99        0.000000 1.235743e-13
+   nozzle       Fx 99        0.320332 6.147777e+00
+   nozzle       Fz 99        0.357605 4.946522e+00
+   nozzle   P_exit 99        0.084232 6.551789e+00
+------------------------------------------------------------------------------
+VALUES -- worst 10 offenders (by |pct_diff|)
+------------------------------------------------------------------------------
+ point_id component quantity   value_new    value_old   abs_diff    pct_diff
+       99    engine       Fx   10.829941  -251.290559 262.120500  104.309729
+       99    engine       Fz   -0.351900     8.165255  -8.517155 -104.309729
+       48    engine       Fx -370.802853  -875.343373 504.540521   57.639155
+       48    engine       Fz   14.672531    34.637012 -19.964481  -57.639155
+       80    engine       Fz  -10.130525    -6.738165  -3.392360  -50.345468
+       80    engine       Fx  387.787094   257.930685 129.856409   50.345468
+       42    engine       Fx -598.719803 -1029.760963 431.041160   41.858371
+       42    engine       Fz   26.320846    45.270224 -18.949378  -41.858371
+       31    engine       Fx -659.317232 -1106.711337 447.394105   40.425546
+       31    engine       Fz   24.362956    40.894971 -16.532016  -40.425546
+------------------------------------------------------------------------------
+SENSITIVITIES -- per (component, quantity), over all compared points x 13 geometry DVs
+(equivalence_ratio sensitivity NOT compared -- new stack can't compute it via evaluate_scramjet_point; see README.md)
+------------------------------------------------------------------------------
+component quantity    n  median_abs_pct  max_abs_pct
+     cowl       Fx 1188    1.856139e-13 3.432647e-01
+     cowl       Fz 1188    1.819136e-13 1.950323e+00
+   engine       Fx 1188    1.039466e+02 7.575121e+09
+   engine       Fz 1188    1.016151e+02 7.575121e+09
+   engine        M 1095    1.809235e+02 1.969035e+18
+   engine        P 1112    1.837073e+02 1.972099e+18
+   engine        T 1109    1.932289e+02 1.966036e+18
+    inlet       Fx 1089    0.000000e+00 1.316466e-13
+    inlet       Fz 1089    0.000000e+00 1.489012e-13
+   nozzle       Fx 1287    9.537507e+01 1.010953e+10
+   nozzle       Fz 1287    9.906912e+01 1.943347e+09
+   nozzle   P_exit 1276    1.141414e+02 3.300361e+16
+------------------------------------------------------------------------------
+SENSITIVITIES -- worst 15 offenders (by |pct_diff|, sens_old magnitude > 1e-6 to avoid near-zero-denominator noise)
+------------------------------------------------------------------------------
+ point_id component quantity            dv      sens_new  sens_old      abs_diff      pct_diff
+       46    engine        P nozzle_length  2.469518e+12  0.000125  2.469518e+12  1.972099e+18
+       46    engine        T nozzle_length  2.517136e+10  0.000001  2.517136e+10  1.966036e+18
+       46    engine        P  nozzle_angle -9.918566e+11 -0.000075 -9.918566e+11 -1.331209e+18
+        7    engine        P nozzle_length  2.313827e+11  0.000024  2.313827e+11  9.780845e+17
+       31    engine        P nozzle_length  2.425020e+11  0.000044  2.425020e+11  5.491284e+17
+       90    engine        P nozzle_length  5.918139e+10  0.000019  5.918139e+10  3.153408e+17
+       76    engine        P  nozzle_angle -8.029594e+11 -0.000379 -8.029594e+11 -2.117378e+17
+       76    engine        T  nozzle_angle -8.066270e+09 -0.000004 -8.066270e+09 -2.094906e+17
+       76    engine        P nozzle_length  1.436399e+12 -0.001782  1.436399e+12  8.060722e+16
+       76    engine        T nozzle_length  1.442960e+10 -0.000018  1.442960e+10  7.975173e+16
+       19    engine        P  nozzle_angle  1.282321e+11  0.000168  1.282321e+11  7.626777e+16
+       19    engine        T  nozzle_angle  1.681354e+09  0.000002  1.681354e+09  7.553603e+16
+        4    engine        P  nozzle_angle -6.457493e+09  0.000011 -6.457493e+09 -5.925916e+16
+       78    engine        P  nozzle_angle -4.735728e+10 -0.000088 -4.735728e+10 -5.393341e+16
+       27    engine        P  nozzle_angle  3.801761e+11 -0.000706  3.801761e+11  5.384127e+16
+==============================================================================
